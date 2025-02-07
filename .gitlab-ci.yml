@@ -1,0 +1,36 @@
+image: docker:latest
+
+services:
+  - docker:dind
+
+stages:
+  - build
+  - deloy
+
+variables:
+  TAG: preprod-$CI_COMMIT_SHORT_SHA
+
+before_script:
+  - echo "$ec2_ssh_key" > deploy_key && chmod 600 deploy_key
+
+build-docker-compose:
+  stage: build
+  script:
+    - echo "$env" > .env
+    - docker-compose -f docker-compose.yml build
+
+  only:
+    - main
+
+deploy:
+  stage: deploy
+  script:
+    - scp -i deploy_key docker-compose.yml .env $ec2_user_preprod@$ec2_ip_preprod:$app_directory
+    - ssh -i deploy_key $ec2_user@$ec2_ip_preprod <<EOF
+        cd $app_directory
+        docker-compose pull
+        docker-compose down
+        docker-compose up -d
+      EOF
+  only:
+    - main
