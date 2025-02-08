@@ -19,8 +19,6 @@ test:
   only:
     - devloppeur
   image: python:3.9  # Utilisation d'une image avec Python pour installer Locust
-  services:
-    - name: docker:dind  # Service Docker pour exécuter le backend dans un conteneur si nécessaire
   before_script:
     - apt-get update && apt-get install -y curl nodejs npm  # Installer Node.js et npm
     - npm install
