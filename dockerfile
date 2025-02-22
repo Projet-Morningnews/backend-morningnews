@@ -3,16 +3,14 @@ FROM node:16
 WORKDIR /
 
 COPY ./package*.json ./
-# Ouverture sur port 3000
+# pour l'ancer l'application sur le port 3000
 EXPOSE 3000
 
-# Dependances
+# pour installer les dépendances 
 RUN npm install
 
-RUN npm install mongodb
-
-# copies des fichiers sources
+# pour copies le cotnue dans le meme dossier 
 COPY . .
 
-# Demarre l'app
+# Commande pour demmarer l'application backend 
 CMD ["npm","start"]
