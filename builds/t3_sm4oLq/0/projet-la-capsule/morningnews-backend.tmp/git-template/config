@@ -1,0 +1,8 @@
+[init]
+	defaultBranch = none
+[fetch]
+	recurseSubmodules = false
+[transfer]
+	bundleURI = true
+[http "https://gitlab.com"]
+	sslCAInfo = /home/engineer/morningnews-projet-final/morningnews-projet/morningnews-backend/builds/t3_sm4oLq/0/projet-la-capsule/morningnews-backend.tmp/CI_SERVER_TLS_CA_FILE
