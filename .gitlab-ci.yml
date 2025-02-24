@@ -4,15 +4,79 @@ services:
   - docker:dind
 
 stages:
-  - test
   - build
-  - deploy
+  - deploy 
+  - test
+  - Sonar_analysis  # Ajout de l'analyse SonarCloud
 
 variables:
-  TAG: preprod-$CI_COMMIT_SHORT_SHA
+  APP_DIR: "/home/admin/app"
+  SONAR_TOKEN: $SONAR_TOKEN
+  SONAR_USER_HOME: "${CI_PROJECT_DIR}/.sonar"  # Defines the location of the analysis task cache
+  GIT_DEPTH: "0" 
+  TAG: $CI_COMMIT_BRANCH-$CI_COMMIT_SHORT_SHA
+  PREPRD_TAG: $CI_COMMIT_BRANCH-$CI_COMMIT_SHORT_SHA 
+  DOCKER_IMAGE_PROD: ahmedgribi/morningnews-backend-projet_final
+  DOCKER_IMAGE_PREPROD: ahmedgribi/morningnews-backend-projet_final
 
+
+
+ 
 before_script:
   - echo "$ec2_ssh_key" > deploy_key && chmod 600 deploy_key
+  - apt-get update && apt-get install -y docker.io
+  - echo $tokendocker | docker login -u $logindocker --password-stdin
+  - docker --version
+
+
+
+build_preprod:
+  stage: build
+  script:
+    - echo "$env" > .env
+    - docker build -t $DOCKER_IMAGE_PREPROD:$PREPRD_TAG .
+    - docker push $DOCKER_IMAGE_PREPROD:$PREPRD_TAG
+  only:
+    - main
+
+build_prod: 
+  stage: build
+  script:
+    - echo "$env" > .env
+    - docker build -t $DOCKER_IMAGE_PROD:$TAG -t $DOCKER_IMAGE_PROD:latest .
+    - docker push $DOCKER_IMAGE_PROD:$TAG
+    - docker push $DOCKER_IMAGE_PROD:latest
+  only: 
+    - production 
+
+
+
+deploy_preprod:
+  stage: deploy
+  script:
+    - echo "Deploy application in instance of PREPRD"
+    - echo "CI_COMMIT_BRANCH=${CI_COMMIT_BRANCH}" > deploy_env.tmp
+    - echo "CI_COMMIT_SHORT_SHA=${CI_COMMIT_SHORT_SHA}" >> deploy_env.tmp
+    - rsync -avv --progress -e "ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i deploy_key" docker-compose.yml deploy_env.tmp Dockerfile nginx.conf admin@ec2-13-38-84-26.eu-west-3.compute.amazonaws.com:$APP_DIR
+    - ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i deploy_key admin@ec2-13-38-84-26.eu-west-3.compute.amazonaws.com "export PATH=\$PATH:/usr/local/bin && cp ~/app/deploy_env.tmp .env && cd $APP_DIR && sudo docker compose down && sudo docker compose up -d --pull always"
+  only: 
+    - main 
+
+deploy_prod:
+  stage: deploy
+  script:
+    - echo "Deploy application in instance of prodution"
+    - rsync -avz -e "ssh -i deploy_key" docker-compose.yml .env $ec2_user@$ec2_ip:$APP_DIR
+    - ssh -i deploy_key $ec2_user@$ec2_ip <<EOF
+        cd $APP_DIR
+        docker-compose down
+        docker-compose up -d --pull always
+      EOF
+  only: 
+    - production 
+
+
+
 
 test:
   stage: test
@@ -20,36 +84,35 @@ test:
     - devloppeur
   image: python:3.9  # Utilisation d'une image avec Python pour installer Locust
   before_script:
-    - apt-get update && apt-get install -y curl nodejs npm  # Installer Node.js et npm
+    - apt-get update && apt-get install -y curl nodejs npm python3-venv # Installer Node.js et npm
     - npm install
-    - pip3 install locust  # Installer Locust
+    - python3 -m venv locust-env
+    - source locust-env/bin/activate
+    - pip3 install locust  
+    - echo "$CONNECTION_STRING" > .env 
+    
   script:
-    - npm test  # Lancer les tests Jest
-    - npm start &  # Démarrer le backend en arrière-plan
+    - npm start &
+    - npm test -- --coverage  #  Génération du rapport de couverture Jest
     - sleep 5  # Attendre que le serveur démarre
     - locust --headless --users 100 --spawn-rate 80 -H http://localhost:3000 -t 5s --only-summary
+  artifacts:
+    paths:
+      - coverage/lcov.info  # Sauvegarde le rapport pour l'analyse SonarCloud
+    expire_in: 1 hour  # Les fichiers sont stockés temporairement
 
 
-
-
-build-docker-compose:
-  stage: build
+sonarcloud-check:
+  stage: Sonar_analysis
+  image:
+    name: sonarsource/sonar-scanner-cli:latest
+    entrypoint: [""]
+  cache:
+    key: "${CI_JOB_NAME}"
+    paths:
+      - .sonar/cache
   script:
-    - echo "$env" > .env
-    - docker-compose -f docker-compose.yml build
-
+    - sonar-scanner #-Dsonar.branch.name=$CI_COMMIT_BRANCH
   only:
-    - main
+    - devloppeur
 
-deploy:
-  stage: deploy
-  script:
-    - scp -i deploy_key docker-compose.yml .env $ec2_user_preprod@$ec2_ip_preprod:$app_directory
-    - ssh -i deploy_key $ec2_user@$ec2_ip_preprod <<EOF
-        cd $app_directory
-        docker-compose pull
-        docker-compose down
-        docker-compose up -d
-      EOF
-  only:
-    - main
