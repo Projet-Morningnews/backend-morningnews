@@ -7,8 +7,8 @@ services:
     env_file:
       - .env
     ports:
-      - "3000:3000"
-    
+      - "3000:3000"  
+  
   reverse-proxy:
     image: nginx:latest
     container_name: nginx_morningnews_proxy
