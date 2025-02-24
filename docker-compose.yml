@@ -2,26 +2,17 @@ version: "3.9"
 
 services:
   app:
-    build:
-      context: contextPath
-      dockerfile: Dockerfile
-    image: phuulia/morningnews-backend-lacapsule:preprod-$CI_COMMIT_SHORT_SHA
+    image: ahmedgribi/morningnews-backend-projet_final:preprod-$CI_COMMIT_SHORT_SHA
+    container_name: backend_morningnews
     env_file:
       - .env
     ports:
       - "3000:3000"
-    networks:
-      - backend-network
-  
+    
   reverse-proxy:
     image: nginx:latest
     container_name: nginx_morningnews_proxy
     ports:
       - "443:443"
       - "80:80"
-    networks:
-      - backend-network
-
-networks:
-  backend-network:
-    driver: bridge
+    
