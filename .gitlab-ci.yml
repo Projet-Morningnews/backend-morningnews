@@ -2,6 +2,7 @@ image: debian:latest
 
 services:
   - docker:dind  # Ajout du service Docker-in-Docker
+
 stages:
   - build
   - deploy 
