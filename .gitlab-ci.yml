@@ -21,7 +21,7 @@ variables:
 before_script:
   - echo "$ec2_ssh_key" > deploy_key && chmod 600 deploy_key
   - apt-get update && apt-get install -y docker.io
-  - echo "$Tocken_Docker" | docker login -u "$Login_Docker" --password-stdin
+  - echo $Token_docker | docker login -u $Login_Docker --password-stdin
   - docker --version
 
 
