@@ -1,6 +1,6 @@
 services:  
   bdd:
-    image: mongodb:latest
+    image: mongo:latest
     container_name: bdd_morningnews
     environment:
       - MONGO_INITDB_ROOT_USERNAME=$mongo_user
