@@ -30,8 +30,8 @@ before_script:
 build_preprod:
   stage: build
   script:
-    - echo "$CONNECTION_STRING" > .env
-    - echo "$NEWS_API_KEY" >> .env
+    - echo "CONNECTION_STRING=$CONNECTION_STRING_PREPROD" > .env
+    - echo "NEWS_API_KEY=$NEWS_API_KEY" >> .env
     - docker build -t $DOCKER_IMAGE_PREPROD:$PREPRD_TAG .
     - docker push $DOCKER_IMAGE_PREPROD:$PREPRD_TAG
   rules:
