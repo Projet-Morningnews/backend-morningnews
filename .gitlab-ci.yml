@@ -62,7 +62,7 @@ deploy_preprod:
     - echo "MONGO_INITDB_ROOT_USERNAME=$mongo_user" >> deploy_env.tmp
     - echo "MONGO_INITDB_ROOT_PASSWORD=$mongo_password" >> deploy_env.tmp
     - rsync -avv --progress -e "ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i deploy_key" docker-compose.yml deploy_env.tmp Dockerfile nginx.conf mongo-init.js docker-compose-bdd.yml $ec2_user@$ec2_ip_preprod:$APP_DIR
-    - ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i deploy_key $ec2_user@$ec2_ip_preprod "export PATH=\$PATH:/usr/local/bin && cp ~/app/deploy_env.tmp .env && cd $APP_DIR && sudo docker compose down && sudo docker compose up -d --pull always"
+    - ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i deploy_key $ec2_user@$ec2_ip_preprod "export PATH=\$PATH:/usr/local/bin && mv ~/app/deploy_env.tmp .env && cd $APP_DIR && sudo docker compose down && sudo docker compose up -d --pull always"
   rules:
     - if: $CI_COMMIT_BRANCH == "main"
   tags:
