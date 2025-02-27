@@ -10,7 +10,7 @@ stages:
 variables:
   APP_DIR: "/home/admin/app"
   SONAR_TOKEN: $SONAR_TOKEN
-  SONAR_USER_HOME: "${CI_PROJECT_DIR}/.sonar"  # Defines the location of the analysis task cache
+  SONAR_USER_HOME: "${CI_PROJECT_DIR}/.sonar"
   GIT_DEPTH: "0" 
   TAG: $CI_COMMIT_BRANCH-$CI_COMMIT_SHORT_SHA
   PREPRD_TAG: $CI_COMMIT_BRANCH-$CI_COMMIT_SHORT_SHA 
@@ -21,59 +21,64 @@ variables:
 
  
 before_script:
-  - echo $Token_docker
-  - echo $Login_Docker 
   - echo "$ec2_ssh_key" > deploy_key && chmod 600 deploy_key
   - apt-get update && apt-get install -y docker.io
   - echo $Token_docker | docker login -u $Login_Docker --password-stdin
-  - docker --version
 
 
 
 build_preprod:
   stage: build
   script:
-    - echo "$env" > .env
+    - echo "$CONNECTION_STRING" > .env
+    - echo "$NEWS_API_KEY" >> .env
     - docker build -t $DOCKER_IMAGE_PREPROD:$PREPRD_TAG .
     - docker push $DOCKER_IMAGE_PREPROD:$PREPRD_TAG
-  only:
-    - main
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+  tags:
+    - linux
 
 build_prod: 
   stage: build
   script:
-    - echo "$env" > .env
+    - echo "$CONNECTION_STRING" > .env
+    - echo "$NEWS_API_KEY" >> .env
     - docker build -t $DOCKER_IMAGE_PROD:$TAG -t $DOCKER_IMAGE_PROD:latest .
     - docker push $DOCKER_IMAGE_PROD:$TAG
     - docker push $DOCKER_IMAGE_PROD:latest
-  only: 
-    - production 
+  rules:
+    - if: $CI_COMMIT_BRANCH == "production"
 
 
 
 deploy_preprod:
   stage: deploy
   script:
-    - echo "Deploy application in instance of PREPRD"
+    - echo "Deploying application in PREPRD's instance"
+    - mv docker-compose-bdd-preprod.yml docker-compose-bdd.yml
     - echo "CI_COMMIT_BRANCH=${CI_COMMIT_BRANCH}" > deploy_env.tmp
     - echo "CI_COMMIT_SHORT_SHA=${CI_COMMIT_SHORT_SHA}" >> deploy_env.tmp
-    - rsync -avv --progress -e "ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i deploy_key" docker-compose.yml deploy_env.tmp Dockerfile nginx.conf admin@ec2-13-38-84-26.eu-west-3.compute.amazonaws.com:$APP_DIR
-    - ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i deploy_key admin@ec2-13-38-84-26.eu-west-3.compute.amazonaws.com "export PATH=\$PATH:/usr/local/bin && cp ~/app/deploy_env.tmp .env && cd $APP_DIR && sudo docker compose down && sudo docker compose up -d --pull always"
-  only: 
-    - main 
+    - echo "MONGO_INITDB_ROOT_USERNAME=$mongo_user" >> deploy_env.tmp
+    - echo "MONGO_INITDB_ROOT_PASSWORD=$mongo_password" >> deploy_env.tmp
+    - rsync -avv --progress -e "ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i deploy_key" docker-compose.yml deploy_env.tmp Dockerfile nginx.conf mongo-init.js docker-compose-bdd.yml $ec2_user@$ec2_ip_preprod:$APP_DIR
+    - ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i deploy_key $ec2_user@$ec2_ip_preprod "export PATH=\$PATH:/usr/local/bin && cp ~/app/deploy_env.tmp .env && cd $APP_DIR && sudo docker compose down && sudo docker compose up -d --pull always"
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+  tags:
+    - linux
 
 deploy_prod:
   stage: deploy
   script:
-    - echo "Deploy application in instance of prodution"
-    - rsync -avz -e "ssh -i deploy_key" docker-compose.yml .env $ec2_user@$ec2_ip:$APP_DIR
-    - ssh -i deploy_key $ec2_user@$ec2_ip <<EOF
-        cd $APP_DIR
-        docker-compose down
-        docker-compose up -d --pull always
-      EOF
-  only: 
-    - production 
+    - echo "Deploying application in production's instance"
+    - echo "services:" > docker-compose-bdd.yml
+    - echo "CI_COMMIT_BRANCH=${CI_COMMIT_BRANCH}" > deploy_env.tmp
+    - echo "CI_COMMIT_SHORT_SHA=${CI_COMMIT_SHORT_SHA}" >> deploy_env.tmp
+    - rsync -avv --progress -e "ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i deploy_key" docker-compose.yml deploy_env.tmp Dockerfile nginx.conf docker-compose-bdd.yml $ec2_user@$ec2_ip:$APP_DIR
+    - ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i deploy_key $ec2_user@$ec2_ip "export PATH=\$PATH:/usr/local/bin && cp ~/app/deploy_env.tmp .env && cd $APP_DIR && sudo docker compose down && sudo docker compose up -d --pull always"
+  rules:
+    - if: $CI_COMMIT_BRANCH == "production"
 
 
 
