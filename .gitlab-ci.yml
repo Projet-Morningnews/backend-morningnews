@@ -5,7 +5,7 @@ stages:
   - build
   - deploy 
   - test
-  - Sonar_analysis  # Ajout de l'analyse SonarCloud
+  - Sonar_analysis  # Ajout de l'analyse SonarClouds
 
 variables:
   APP_DIR: "/home/admin/app"
