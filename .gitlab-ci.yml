@@ -36,6 +36,8 @@ build_preprod:
     - docker push $DOCKER_IMAGE_PREPROD:$PREPRD_TAG
   rules:
     - if: $CI_COMMIT_BRANCH == "main"
+  tags:
+  - linux
 
 build_prod: 
   stage: build
@@ -63,6 +65,8 @@ deploy_preprod:
     - ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i deploy_key $ec2_user@$ec2_ip_preprod "export PATH=\$PATH:/usr/local/bin && mv ~/app/deploy_env.tmp .env && cd $APP_DIR && sudo docker compose down && sudo docker compose up -d --pull always"
   rules:
     - if: $CI_COMMIT_BRANCH == "main"
+  tags:
+   - linux
 
 deploy_prod:
   stage: deploy
