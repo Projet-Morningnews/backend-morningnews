@@ -36,14 +36,12 @@ build_preprod:
     - docker push $DOCKER_IMAGE_PREPROD:$PREPRD_TAG
   rules:
     - if: $CI_COMMIT_BRANCH == "main"
-  tags:
-    - linux
 
 build_prod: 
   stage: build
   script:
-    - echo "$CONNECTION_STRING" > .env
-    - echo "$NEWS_API_KEY" >> .env
+    - echo "CONNECTION_STRING=$CONNECTION_STRING" > .env
+    - echo "NEWS_API_KEY=$NEWS_API_KEY" >> .env
     - docker build -t $DOCKER_IMAGE_PROD:$TAG -t $DOCKER_IMAGE_PROD:latest .
     - docker push $DOCKER_IMAGE_PROD:$TAG
     - docker push $DOCKER_IMAGE_PROD:latest
@@ -65,8 +63,6 @@ deploy_preprod:
     - ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i deploy_key $ec2_user@$ec2_ip_preprod "export PATH=\$PATH:/usr/local/bin && mv ~/app/deploy_env.tmp .env && cd $APP_DIR && sudo docker compose down && sudo docker compose up -d --pull always"
   rules:
     - if: $CI_COMMIT_BRANCH == "main"
-  tags:
-    - linux
 
 deploy_prod:
   stage: deploy
@@ -75,8 +71,8 @@ deploy_prod:
     - echo "services:" > docker-compose-bdd.yml
     - echo "CI_COMMIT_BRANCH=${CI_COMMIT_BRANCH}" > deploy_env.tmp
     - echo "CI_COMMIT_SHORT_SHA=${CI_COMMIT_SHORT_SHA}" >> deploy_env.tmp
-    - rsync -avv --progress -e "ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i deploy_key" docker-compose.yml deploy_env.tmp Dockerfile nginx.conf docker-compose-bdd.yml $ec2_user@$ec2_ip:$APP_DIR
-    - ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i deploy_key $ec2_user@$ec2_ip "export PATH=\$PATH:/usr/local/bin && cp ~/app/deploy_env.tmp .env && cd $APP_DIR && sudo docker compose down && sudo docker compose up -d --pull always"
+    - rsync -avv --progress -e "ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i deploy_key" docker-compose.yml deploy_env.tmp Dockerfile nginx.conf mongo-init.js docker-compose-bdd.yml $ec2_user@$ec2_ip:$APP_DIR
+    - ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i deploy_key $ec2_user@$ec2_ip "export PATH=\$PATH:/usr/local/bin && cd $APP_DIR && mv ~/app/deploy_env.tmp .env && sudo docker compose down && sudo docker compose up -d --pull always"
   rules:
     - if: $CI_COMMIT_BRANCH == "production"
 
