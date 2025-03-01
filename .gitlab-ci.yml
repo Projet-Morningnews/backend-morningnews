@@ -36,6 +36,7 @@ build_preprod:
     - docker push $DOCKER_IMAGE_PREPROD:$PREPRD_TAG
   rules:
     - if: $CI_COMMIT_BRANCH == "main"
+
   tags:
   - linux
 
@@ -69,6 +70,7 @@ deploy_preprod:
    - linux
 
 deploy_prod:
+
   stage: deploy
   script:
     - echo "Deploying application in production's instance"
