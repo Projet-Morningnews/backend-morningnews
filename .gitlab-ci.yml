@@ -95,7 +95,8 @@ test:
     - npm install
     - python3 -m venv locust-env
     - source locust-env/bin/activate
-    - pip3 install locust  
+    - pip3 install locust
+    - echo "$CONNECTION_STRING"
     - echo "$CONNECTION_STRING" > .env 
     
   script:
